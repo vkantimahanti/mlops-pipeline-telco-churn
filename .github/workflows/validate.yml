@@ -1,0 +1,95 @@
+# ============================================================
+# .github/workflows/validate.yml
+# CI Pipeline — runs on every push and pull request
+#
+# Jobs:
+#   1. validate-bundle   → databricks bundle validate
+#   2. unit-tests        → pytest tests/
+#   3. lint              → flake8 src/ notebooks/
+# ============================================================
+
+name: MLOps Pipeline CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+jobs:
+
+  # ── Job 1: Validate Databricks Asset Bundle ───────────────
+  validate-bundle:
+    name: Validate DAB Bundle Syntax
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install Databricks CLI
+        run: |
+          pip install databricks-cli
+          pip install databricks-sdk
+
+      - name: Validate bundle syntax
+        run: databricks bundle validate
+        env:
+          DATABRICKS_HOST:  ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+
+  # ── Job 2: Run Unit Tests ─────────────────────────────────
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run pytest
+        run: |
+          pytest tests/ -v --cov=src --cov-report=term-missing
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
+  # ── Job 3: Code Quality Lint ──────────────────────────────
+  lint:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install lint tools
+        run: pip install flake8 black
+
+      - name: Check formatting with black
+        run: black --check src/ --line-length 100
+
+      - name: Lint with flake8
+        run: |
+          flake8 src/ \
+            --max-line-length=100 \
+            --ignore=E501,W503 \
+            --exclude=__pycache__
