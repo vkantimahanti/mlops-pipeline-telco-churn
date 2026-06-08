@@ -1,0 +1,82 @@
+# ============================================================
+# FEATURE CONFIGURATION
+# Owns: feature lists, data types, encoding strategies,
+#       cardinality classification, feature groups
+# ============================================================
+
+features:
+
+  # Numeric features — will be scaled
+  numeric:
+    columns:
+      - "tenure"
+      - "MonthlyCharges"
+      - "TotalCharges"
+    scaling:  "StandardScaler"
+    skewed:                                 # subset needing log transform
+      - "TotalCharges"
+
+  # Categorical features — will be encoded
+  categorical:
+
+    # Low cardinality → OneHotEncoder
+    low_cardinality:
+      columns:
+        - "gender"
+        - "Partner"
+        - "Dependents"
+        - "PhoneService"
+        - "PaperlessBilling"
+      encoder: "OneHotEncoder"
+      max_unique_values: 10                 # threshold for this group
+
+    # Medium cardinality → OrdinalEncoder
+    medium_cardinality:
+      columns:
+        - "InternetService"
+        - "Contract"
+        - "PaymentMethod"
+        - "MultipleLines"
+        - "OnlineSecurity"
+        - "TechSupport"
+        - "StreamingTV"
+        - "StreamingMovies"
+      encoder: "OrdinalEncoder"
+      max_unique_values: 50
+
+  # Binary features — map directly to 0/1
+  binary:
+    columns:
+      - "SeniorCitizen"
+    mapping:
+      "Yes": 1
+      "No":  0
+
+  # Identifier columns — always drop, never train on
+  identifiers:
+    - "customerID"
+
+feature_groups:
+  # Logical groupings for interpretability and monitoring
+  demographics:
+    - "gender"
+    - "SeniorCitizen"
+    - "Partner"
+    - "Dependents"
+
+  service_usage:
+    - "tenure"
+    - "PhoneService"
+    - "MultipleLines"
+    - "InternetService"
+    - "OnlineSecurity"
+    - "TechSupport"
+    - "StreamingTV"
+    - "StreamingMovies"
+
+  billing:
+    - "Contract"
+    - "PaperlessBilling"
+    - "PaymentMethod"
+    - "MonthlyCharges"
+    - "TotalCharges"

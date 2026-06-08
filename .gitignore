@@ -1,0 +1,14 @@
+# Local Databricks CLI build directories
+.databricks/
+.bundle/
+
+# Python environment artifacts
+__pycache__/
+*.pyc
+.venv/
+env/
+
+# IDE settings and operating system noise
+.vscode/
+.idea/
+.DS_Store

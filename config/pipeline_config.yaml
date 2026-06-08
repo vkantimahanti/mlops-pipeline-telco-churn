@@ -1,0 +1,57 @@
+# ============================================================
+# PIPELINE CONFIGURATION
+# Owns: data sources, storage paths, preprocessing steps,
+#       filtering rules, target definition
+# ============================================================
+
+data:
+  # volume details 
+  baseline_csv: "/Volumes/databricks_telco_customer_dataset/v01/telco/telco-customer-churn.csv"
+  
+  # The stress-test files used to validate pipeline resilience
+  stress_test_missing: "/Volumes/databricks_telco_customer_dataset/v01/telco/telco-customer-churn-missing.csv"
+  stress_test_noise: "/Volumes/databricks_telco_customer_dataset/v01/telco/telco-customer-churn-noisy.csv"
+
+  # Source tables
+  raw_table:        "workspace.default.telco_churn_raw"
+  processed_table:  "workspace.default.telco_churn_processed"
+  inference_table:  "workspace.default.telco_churn_inference"
+
+  # Target variable
+  target_column:    "Churn"
+  positive_class:   "Yes"                   # what "1" means in business terms
+
+  # Filtering rules
+  filters:
+    contract_cohorts:
+      - "One year"
+      - "Two year"
+    min_tenure_months: 1                    # exclude brand new customers
+
+  # Train/inference split logic
+  split_strategy:   "random"               # random | time_based
+  split_date_column: null                  # populate if time_based
+
+storage:
+  # DBFS or Volume paths for artifacts
+  model_artifacts:  "dbfs:/FileStore/models/telco_churn/"
+  feature_store:    "dbfs:/FileStore/features/telco_churn/"
+  predictions_path: "dbfs:/FileStore/predictions/telco_churn/"
+  log_path:         "dbfs:/FileStore/logs/telco_churn/"
+
+preprocessing:
+  # Columns to drop before training (identifiers, leakage risks)
+  drop_columns:
+    - "customerID"
+
+  # Imputation strategies per column type
+  imputation:
+    numeric_strategy:     "median"
+    categorical_strategy: "most_frequent"
+
+  # Skewed columns needing log transform
+  log_transform_columns:
+    - "TotalCharges"
+
+  # Scaling method
+  scaling_method: "StandardScaler"         # StandardScaler | RobustScaler | MinMaxScaler

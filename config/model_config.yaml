@@ -1,0 +1,41 @@
+  # ============================================================
+# MODEL CONFIGURATION
+# Owns: algorithm choice, hyperparameters, evaluation metrics,
+#       MLflow tracking, model registry
+# ============================================================
+
+mlflow:
+  experiment_path: "/Shared/Telco_Churn_Monitoring"
+  model_name:      "workspace.default.telco_churn_pipeline"
+  run_name:        "Telco_Base_Training"
+  registered_model_name: "workspace.default.telco_churn_classifier"
+  tags:
+    project:     "telco_churn"
+    team:        "ai_platform"
+    environment: "dev"
+
+model:
+  algorithm:     "RandomForestClassifier"   # swap without touching code
+  class_weight:  "balanced"                 # handles imbalance
+  random_state:  42
+
+  hyperparameters:
+    n_estimators: 100
+    max_depth:    4
+    min_samples_split: 10
+    min_samples_leaf:  4
+
+evaluation:
+  primary_metric:   "recall"              # never accuracy for imbalanced
+  secondary_metrics:
+    - "roc_auc"
+    - "precision"
+    - "f1_score"
+  decision_threshold: 0.5                   # adjustable per business need
+  promotion_threshold: 0.65                 # min f1 to promote to registry
+
+training:
+  test_size:       0.2
+  validation_size: 0.1
+  cv_folds:        5
+  stratify:        true                     # preserve class ratio in splits

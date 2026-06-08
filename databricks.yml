@@ -1,0 +1,98 @@
+bundle:
+  name: telco-churn-mlops
+
+# ============================================================
+# TARGET ENVIRONMENTS & PARAMETER DRIVERS
+# ============================================================
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://adb-6069473039648296.16.azuredatabricks.net
+    providers:
+      env: dev
+      node_type: Standard_D4s_v5
+      workers: 2
+      is_paused: PAUSED
+
+  prod:
+    mode: production
+    workspace:
+      host: https://adb-6069473039648296.16.azuredatabricks.net
+    providers:
+      env: prod
+      node_type: Standard_D8s_v5
+      workers: 4
+      is_paused: UNPAUSED
+
+# ============================================================
+# PRODUCTION METADATA & COMPUTE RESOURCES
+# ============================================================
+resources:
+  jobs:
+    telco_churn_end_to_end_job:
+      name: "[${target.providers.env}] Telco Churn End-to-End MLOps Pipeline"
+      timeout_seconds: 7200
+      
+      email_notifications:
+        on_failure: [x123@gmail.com]
+        on_success: [x123@gmail.com]
+
+      schedule:
+        quartz_cron_expression: "0 0 6 ? * MON"
+        timezone_id: "America/Detroit"
+        pause_status: ${target.providers.is_paused}
+
+      job_clusters:
+        - job_cluster_key: ml_compute_cluster
+          new_cluster:
+            spark_version: 14.3.x-cpu-ml-scala2.12
+            node_type_id: ${target.providers.node_type}
+            num_workers: ${target.providers.workers}
+            data_security_mode: SINGLE_USER
+            spark_conf:
+              spark.databricks.delta.preview.enabled: "true"
+            libraries:
+              - pypi: { package: "scikit-learn>=1.3.0" }
+              - pypi: { package: "mlflow>=2.9.0" }
+              - pypi: { package: "pyyaml>=6.0" }
+              - pypi: { package: "imbalanced-learn>=0.11.0" }
+
+      # ============================================================
+      # TASK EXECUTION GRAPH (DAG)
+      # ============================================================
+      tasks:
+        - task_key: 00_data_ingestion
+          job_cluster_key: ml_compute_cluster
+          notebook_task:
+            notebook_path: ./notebooks/00_data_ingestion.py
+            base_parameters: { environment: "${target.providers.env}" }
+
+        - task_key: 01_baseline_training
+          depends_on: [{ task_key: 00_data_ingestion }]
+          job_cluster_key: ml_compute_cluster
+          notebook_task:
+            notebook_path: ./notebooks/01_baseline_training_orchestrator.py
+            base_parameters: { environment: "${target.providers.env}" }
+
+        - task_key: 02_gatekeeper_evaluation
+          depends_on: [{ task_key: 01_baseline_training }]
+          job_cluster_key: ml_compute_cluster
+          notebook_task:
+            notebook_path: ./notebooks/02_gatekeeper_metric_evaluator.py
+            base_parameters: { environment: "${target.providers.env}" }
+
+        - task_key: 03_drift_stress_simulation
+          depends_on: [{ task_key: 02_gatekeeper_evaluation }]
+          job_cluster_key: ml_compute_cluster
+          notebook_task:
+            notebook_path: ./notebooks/03_drift_and_stress_simulator.py
+            base_parameters: { environment: "${target.providers.env}" }
+
+        - task_key: 04_batch_inference
+          depends_on: [{ task_key: 03_drift_stress_simulation }]
+          job_cluster_key: ml_compute_cluster
+          notebook_task:
+            notebook_path: ./notebooks/04_batch_inference_pipeline.py
+            base_parameters: { environment: "${target.providers.env}" }

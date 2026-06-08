@@ -1,0 +1,51 @@
+name: "Databricks Asset Bundle CI/CD Pipeline"
+
+# 🎛️ Trigger automation when code merges to main or during a pull request
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: "Validate and Deploy Asset Bundle"
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Pull down the raw repository source code text onto the runner
+      - name: Checkout Code Repository
+        uses: actions/checkout@v3
+
+      # Step 2: Install the Databricks CLI agent onto the GitHub environment
+      - name: Setup Databricks CLI
+        uses: databricks/setup-databricks@v1
+
+      # Step 3: Run structural testing against the databricks.yml asset bundle
+      - name: Validate Bundle Configuration
+        run: |
+          databricks bundle validate
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+
+      # Step 4: Conditional Deployment (Dev vs. Prod)
+      # If it's a Pull Request, compile and deploy to DEV to ensure it doesn't break
+      - name: Deploy to Development Target
+        if: github.event_name == 'pull_request'
+        run: |
+          databricks bundle deploy --target dev
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+
+      # If code successfully pushed/merged into main, deploy straight to PRODUCTION
+      - name: Deploy to Production Target
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          databricks bundle deploy --target prod
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
